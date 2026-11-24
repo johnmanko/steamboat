@@ -27,97 +27,97 @@ Inbox, conversations, composing, search, and settings
 
 Steamboat. The icon after Messages is the app-wide notification setting.
 
-![Inbox in Steamboat, with the global notification clue beside Messages](docs/screenshots/inbox.png)
+<img src="docs/screenshots/inbox.png" alt="Inbox in Steamboat, with the global notification clue beside Messages" width="240">
 
 ### Group conversation
 
 Catppuccin Macchiato. Jonah and Maya.
 
-![Jonah and Maya group conversation in Catppuccin Macchiato](docs/screenshots/thread-group.png)
+<img src="docs/screenshots/thread-group.png" alt="Jonah and Maya group conversation in Catppuccin Macchiato" width="240">
 
 ### Larger group
 
 Dracula. Jonah, Luis, Maya, and Priya.
 
-![Four-person group conversation in Dracula](docs/screenshots/thread-group-large.png)
+<img src="docs/screenshots/thread-group-large.png" alt="Four-person group conversation in Dracula" width="240">
 
 ### Photo in a thread
 
 Everforest Light Hard Lost. Maya Chen.
 
-![Maya Chen conversation with a photo in Everforest Light Hard Lost](docs/screenshots/thread-photo.png)
+<img src="docs/screenshots/thread-photo.png" alt="Maya Chen conversation with a photo in Everforest Light Hard Lost" width="240">
 
 ### Photo viewer
 
 Medallion.
 
-![Full-screen photo viewer in Medallion](docs/screenshots/photo-viewer.png)
+<img src="docs/screenshots/photo-viewer.png" alt="Full-screen photo viewer in Medallion" width="240">
 
 ### Link in a thread
 
 Amber CRT Retro. Jonah Ellis, with a custom vibrate schedule.
 
-![Jonah Ellis conversation with a link in Amber CRT Retro](docs/screenshots/thread-link.png)
+<img src="docs/screenshots/thread-link.png" alt="Jonah Ellis conversation with a link in Amber CRT Retro" width="240">
 
 ### Composing a photo and a location
 
 Base2Tone Lake. Luis Ortega. The photo and OpenStreetMap link are in the draft and were not sent.
 
-![Composer with a photo and an OpenStreetMap link in Base2Tone Lake](docs/screenshots/compose-image-location.png)
+<img src="docs/screenshots/compose-image-location.png" alt="Composer with a photo and an OpenStreetMap link in Base2Tone Lake" width="240">
 
 ### Search
 
 Nordfox. Message excerpts, with the match highlighted.
 
-![Search results for parked in Nordfox](docs/screenshots/search.png)
+<img src="docs/screenshots/search.png" alt="Search results for parked in Nordfox" width="240">
 
 ### Settings
 
 Atlas.
 
-![Settings in Atlas](docs/screenshots/settings.png)
+<img src="docs/screenshots/settings.png" alt="Settings in Atlas" width="240">
 
 ### Quick replies
 
 Seafoam Pastel.
 
-![Quick replies in Seafoam Pastel](docs/screenshots/quick-replies.png)
+<img src="docs/screenshots/quick-replies.png" alt="Quick replies in Seafoam Pastel" width="240">
 
 ### Themes
 
 Matrix.
 
-![Theme list in Matrix](docs/screenshots/themes.png)
+<img src="docs/screenshots/themes.png" alt="Theme list in Matrix" width="240">
 
 ### Contacts
 
 Blue Moon Light.
 
-![Contacts in Blue Moon Light](docs/screenshots/contacts.png)
+<img src="docs/screenshots/contacts.png" alt="Contacts in Blue Moon Light" width="240">
 
 ### Location
 
 Cupcake.
 
-![Location settings in Cupcake](docs/screenshots/location.png)
+<img src="docs/screenshots/location.png" alt="Location settings in Cupcake" width="240">
 
 ### Notifications, silent
 
 Doom One. Silent is on, and sound and vibration are limited to part of the day.
 
-![Silent notification settings with hours in Doom One](docs/screenshots/notifications-silent.png)
+<img src="docs/screenshots/notifications-silent.png" alt="Silent notification settings with hours in Doom One" width="240">
 
 ### Notifications, with sound hours
 
 Solarflare Light. Silent is off, sound is selected, and the hours run from 8:00 AM to 11:00 PM.
 
-![Non-silent notification settings with hours in Solarflare Light](docs/screenshots/notifications-hours.png)
+<img src="docs/screenshots/notifications-hours.png" alt="Non-silent notification settings with hours in Solarflare Light" width="240">
 
 ### Conversation notification settings
 
 Synthwave Everything. Maya Chen, with a custom silent setting and the clue under her name.
 
-![Per-conversation notification settings in Synthwave Everything](docs/screenshots/thread-notifications.png)
+<img src="docs/screenshots/thread-notifications.png" alt="Per-conversation notification settings in Synthwave Everything" width="240">
 
 
 
