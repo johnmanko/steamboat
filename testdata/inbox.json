@@ -1,0 +1,21 @@
+{
+  "contacts": [
+    { "name": "Maya Chen", "number": "(555) 010-1001" },
+    { "name": "Jonah Ellis", "number": "(555) 010-1002" },
+    { "name": "Priya Shah", "number": "(555) 010-1003" },
+    { "name": "Luis Ortega", "number": "(555) 010-1004" }
+  ],
+  "messages": [
+    { "number": "(555) 010-1001", "body": "The bakery on Pine saved you a slice.", "minutesAgo": 1560, "outgoing": false, "seen": true },
+    { "number": "(555) 010-1001", "body": "I'll swing by after work.", "minutesAgo": 1500, "outgoing": true, "seen": true },
+    { "number": "(555) 010-1001", "body": "They close at 6. Want me to pick it up?", "minutesAgo": 95, "outgoing": false, "seen": false },
+    { "number": "(555) 010-1001", "body": "Saved you the last one.", "minutesAgo": 20, "outgoing": false, "seen": false, "media": "media/wallpaper-26066662.jpg" },
+    { "number": "(555) 010-1002", "body": "Are we still on for the river trail?", "minutesAgo": 1200, "outgoing": false, "seen": true },
+    { "number": "(555) 010-1002", "body": "Yes. I'll bring the thermos.", "minutesAgo": 1080, "outgoing": true, "seen": true },
+    { "number": "(555) 010-1002", "body": "Perfect. Trailhead at 9.", "minutesAgo": 180, "outgoing": false, "seen": true },
+    { "number": "(555) 010-1003", "body": "The mockups look soft and lovely.", "minutesAgo": 300, "outgoing": false, "seen": false },
+    { "number": "(555) 010-1003", "body": "I'll send the dark theme tonight.", "minutesAgo": 240, "outgoing": true, "seen": true },
+    { "number": "(555) 010-1004", "body": "Did the tickets go through?", "minutesAgo": 1800, "outgoing": true, "seen": true },
+    { "number": "(555) 010-1004", "body": "Two seats, row D. See you there.", "minutesAgo": 1680, "outgoing": false, "seen": true }
+  ]
+}
