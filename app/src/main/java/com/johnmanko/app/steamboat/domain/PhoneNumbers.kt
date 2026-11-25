@@ -36,4 +36,28 @@ object PhoneNumbers {
         .replace("\\", "\\\\")
         .replace("%", "\\%")
         .replace("_", "\\_")
+
+    /**
+     * One display for every stored shape of the same number.
+     * A 10-digit number and the same number with a leading 1 both render as
+     * `(555) 123-1234`.
+     */
+    fun display(raw: String): String {
+        val digits = digits(raw)
+        val national = when {
+            digits.length == 10 -> digits
+            digits.length == 11 && digits.startsWith("1") -> digits.drop(1)
+            digits.length == 7 -> return "${digits.take(3)}-${digits.drop(3)}"
+            else -> return if (raw.trim().startsWith("+")) "+$digits" else digits.ifEmpty { raw.trim() }
+        }
+        return "(${national.take(3)}) ${national.substring(3, 6)}-${national.substring(6)}"
+    }
+
+    /** A phone-only query long enough to start a conversation, or null. */
+    fun newContactNumber(raw: String): String? {
+        val trimmed = raw.trim()
+        if (trimmed.any { it.isLetter() }) return null
+        if (digits(trimmed).length < 3) return null
+        return trimmed
+    }
 }

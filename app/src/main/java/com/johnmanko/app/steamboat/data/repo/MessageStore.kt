@@ -1,6 +1,5 @@
 package com.johnmanko.app.steamboat.data.repo
 
-import android.telephony.PhoneNumberUtils
 import androidx.room3.withWriteTransaction
 import com.johnmanko.app.steamboat.data.db.ContactEntity
 import com.johnmanko.app.steamboat.data.db.ConversationEntity
@@ -10,7 +9,6 @@ import com.johnmanko.app.steamboat.data.db.SteamboatDatabase
 import com.johnmanko.app.steamboat.domain.GroupPerson
 import com.johnmanko.app.steamboat.domain.Groups
 import com.johnmanko.app.steamboat.domain.PhoneNumbers
-import java.util.Locale
 
 data class ImportedSms(
     val providerKey: String,
@@ -45,7 +43,9 @@ class MessageStore(private val database: SteamboatDatabase) {
 
     fun contactPaging() = contacts.paging()
 
-    fun searchContacts(query: String) = contacts.search(query)
+    fun searchContacts(query: String, digits: String) = contacts.search(query, digits)
+
+    suspend fun contactByMatchKey(matchKey: String) = contacts.findByMatchKey(matchKey)
 
     fun messagePaging(conversationId: Long) = messages.paging(conversationId)
 
@@ -292,8 +292,7 @@ class MessageStore(private val database: SteamboatDatabase) {
         title = title,
     )
 
-    private fun formatAddress(address: String): String =
-        PhoneNumberUtils.formatNumber(address, Locale.getDefault().country) ?: address
+    private fun formatAddress(address: String): String = PhoneNumbers.display(address)
 
     private companion object {
         const val DUPLICATE_WINDOW_MS = 15_000L

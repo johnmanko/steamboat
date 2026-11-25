@@ -33,4 +33,20 @@ class PhoneNumbersTest {
     fun likePatternEscapesWildcards() {
         assertEquals("100\\%\\_off", PhoneNumbers.likePattern("100%_off"))
     }
+
+    @Test
+    fun displayUsesOneFormatForTheSameNumber() {
+        val expected = "(555) 123-1234"
+        assertEquals(expected, PhoneNumbers.display("(555) 123-1234"))
+        assertEquals(expected, PhoneNumbers.display("555-123-1234"))
+        assertEquals(expected, PhoneNumbers.display("555 123 1234"))
+        assertEquals(expected, PhoneNumbers.display("+1 (555) 123-1234"))
+    }
+
+    @Test
+    fun newContactNumberAcceptsAPhoneAndRejectsAName() {
+        assertEquals("555-123-9999", PhoneNumbers.newContactNumber("555-123-9999"))
+        assertEquals(null, PhoneNumbers.newContactNumber("Maya Chen"))
+        assertEquals(null, PhoneNumbers.newContactNumber("12"))
+    }
 }

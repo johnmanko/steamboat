@@ -24,11 +24,14 @@ interface ContactDao {
         """
         SELECT * FROM contacts
         WHERE displayName LIKE '%' || :query || '%' ESCAPE '\'
-           OR phoneNumber LIKE '%' || :query || '%' ESCAPE '\'
+           OR (:digits != '' AND matchKey LIKE '%' || :digits || '%')
         ORDER BY displayName COLLATE NOCASE, phoneNumber
         """,
     )
-    fun search(query: String): PagingSource<Int, ContactEntity>
+    fun search(query: String, digits: String): PagingSource<Int, ContactEntity>
+
+    @Query("SELECT * FROM contacts WHERE matchKey = :matchKey LIMIT 1")
+    suspend fun findByMatchKey(matchKey: String): ContactEntity?
 
     @Query("DELETE FROM contacts")
     suspend fun deleteAll()

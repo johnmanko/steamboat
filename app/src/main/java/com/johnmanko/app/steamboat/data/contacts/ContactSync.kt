@@ -1,5 +1,6 @@
 package com.johnmanko.app.steamboat.data.contacts
 
+import android.content.ContentProviderOperation
 import android.content.Context
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
@@ -52,5 +53,44 @@ class ContactSync(private val context: Context) {
             }
         }
         return rows
+    }
+
+    /** Saves a phone-only contact. The display name is the formatted number. */
+    fun insert(number: String): Boolean {
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.WRITE_CONTACTS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!granted) return false
+        val display = PhoneNumbers.display(number)
+        val operations = arrayListOf(
+            ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                .build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(
+                    ContactsContract.Data.MIMETYPE,
+                    ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
+                )
+                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, display)
+                .build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(
+                    ContactsContract.Data.MIMETYPE,
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
+                )
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, display)
+                .withValue(
+                    ContactsContract.CommonDataKinds.Phone.TYPE,
+                    ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE,
+                )
+                .build(),
+        )
+        return runCatching {
+            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations)
+        }.isSuccess
     }
 }

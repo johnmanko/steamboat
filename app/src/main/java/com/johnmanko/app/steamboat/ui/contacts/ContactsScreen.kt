@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +51,7 @@ import com.johnmanko.app.steamboat.data.db.ContactEntity
 import com.johnmanko.app.steamboat.ui.components.PastelAvatar
 import com.johnmanko.app.steamboat.ui.theme.washContentColor
 import com.johnmanko.app.steamboat.ui.theme.washTopBarColors
+import com.johnmanko.app.steamboat.domain.PhoneNumbers
 import com.johnmanko.app.steamboat.ui.format.formatPhone
 import androidx.compose.foundation.layout.Row
 
@@ -71,9 +73,27 @@ fun ContactsRoute(
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
             PackageManager.PERMISSION_GRANTED
     }
+    var pendingNumber by remember { mutableStateOf<String?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         tick += 1
         viewModel.refresh()
+    }
+    val writeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        val number = pendingNumber
+        pendingNumber = null
+        if (number != null) viewModel.addNumber(number, onOpenThread)
+    }
+    fun addTypedNumber(number: String) {
+        val writeGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.WRITE_CONTACTS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (writeGranted) {
+            viewModel.addNumber(number, onOpenThread)
+        } else {
+            pendingNumber = number
+            writeLauncher.launch(Manifest.permission.WRITE_CONTACTS)
+        }
     }
     LaunchedEffect(granted) {
         if (granted) viewModel.refresh()
@@ -135,10 +155,16 @@ fun ContactsRoute(
                     }
                 }
                 contacts.itemCount == 0 && contacts.loadState.refresh is LoadState.NotLoading -> {
-                    Text(
-                        text = stringResource(if (query.isBlank()) R.string.no_contacts else R.string.no_matches),
-                        modifier = Modifier.padding(24.dp).weight(1f),
-                    )
+                    Column(Modifier.padding(24.dp).weight(1f)) {
+                        Text(stringResource(if (query.isBlank()) R.string.no_contacts else R.string.no_matches))
+                        val typed = PhoneNumbers.newContactNumber(query)
+                        if (mode == ContactsMode.NewMessage && typed != null) {
+                            Button(
+                                onClick = { addTypedNumber(typed) },
+                                modifier = Modifier.padding(top = 12.dp),
+                            ) { Text(stringResource(R.string.add_number, formatPhone(typed))) }
+                        }
+                    }
                 }
                 else -> {
                     LazyColumn(
