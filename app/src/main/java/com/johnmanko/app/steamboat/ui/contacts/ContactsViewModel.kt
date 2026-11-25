@@ -57,6 +57,12 @@ class ContactsViewModel(private val repository: MessagingRepository) : ViewModel
         viewModelScope.launch { repository.syncContacts() }
     }
 
+    fun addNumber(raw: String, onReady: (Long) -> Unit) {
+        viewModelScope.launch {
+            onReady(repository.addUnlistedNumber(raw))
+        }
+    }
+
     fun start(contact: ContactEntity, onReady: (Long) -> Unit) {
         viewModelScope.launch {
             onReady(repository.openConversation(contact))

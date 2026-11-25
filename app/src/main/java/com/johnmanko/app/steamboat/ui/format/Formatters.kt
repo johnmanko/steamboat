@@ -1,6 +1,6 @@
 package com.johnmanko.app.steamboat.ui.format
 
-import android.telephony.PhoneNumberUtils
+import com.johnmanko.app.steamboat.domain.PhoneNumbers
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -9,8 +9,7 @@ import java.util.Locale
 private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
 private val dayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d")
 
-fun formatPhone(raw: String): String =
-    PhoneNumberUtils.formatNumber(raw, Locale.getDefault().country) ?: raw
+fun formatPhone(raw: String): String = PhoneNumbers.display(raw)
 
 fun formatConversationTime(epochMillis: Long, yesterdayLabel: String): String {
     if (epochMillis <= 0L) return ""

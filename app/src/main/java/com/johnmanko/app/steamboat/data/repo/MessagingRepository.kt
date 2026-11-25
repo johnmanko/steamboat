@@ -68,7 +68,11 @@ class MessagingRepository(
         query.flatMapLatest { raw ->
             Pager(PagingConfigs.lists) {
                 val pattern = PhoneNumbers.likePattern(raw)
-                if (pattern.isEmpty()) store.contactPaging() else store.searchContacts(pattern)
+                if (pattern.isEmpty()) {
+                    store.contactPaging()
+                } else {
+                    store.searchContacts(pattern, PhoneNumbers.digits(raw))
+                }
             }.flow
         }
 
@@ -131,6 +135,30 @@ class MessagingRepository(
 
     suspend fun removePerson(conversationId: Long, matchKey: String) = withContext(Dispatchers.IO) {
         store.removePerson(conversationId, matchKey)
+    }
+
+    suspend fun addUnlistedNumber(raw: String): Long = withContext(Dispatchers.IO) {
+        val display = PhoneNumbers.display(raw)
+        contactSync.insert(display)
+        syncContacts()
+        val saved = store.contactByMatchKey(PhoneNumbers.matchKey(raw))
+        if (saved != null) {
+            store.openConversation(
+                address = saved.phoneNumber,
+                title = saved.displayName,
+                photoUri = saved.photoUri,
+                lookupKey = saved.lookupKey,
+                manual = true,
+            )
+        } else {
+            store.openConversation(
+                address = display,
+                title = display,
+                photoUri = null,
+                lookupKey = null,
+                manual = false,
+            )
+        }
     }
 
     suspend fun openConversation(address: String): Long = withContext(Dispatchers.IO) {
