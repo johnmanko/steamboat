@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.cachedIn
 import com.johnmanko.app.steamboat.data.repo.MessagingRepository
+import com.johnmanko.app.steamboat.di.ComposerDraft
 import com.johnmanko.app.steamboat.di.OpenRequestBus
 import com.johnmanko.app.steamboat.domain.PendingAttachment
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,12 +40,17 @@ class ThreadViewModel(
         private set
 
     init {
-        navigator.takeDraft(conversationId)?.let { applyDraft(it) }
+        navigator.takeDraft(conversationId)?.let(::prefill)
         viewModelScope.launch {
             navigator.conversationId.collect { requested ->
                 if (requested == conversationId) {
-                    navigator.takeDraft(conversationId)?.let { applyDraft(it) }
+                    navigator.takeDraft(conversationId)?.let { applyDraft(it.text) }
                 }
+            }
+        }
+        viewModelScope.launch {
+            navigator.draftReady.collect { id ->
+                if (id == conversationId) navigator.takeDraft(id)?.let(::prefill)
             }
         }
         viewModelScope.launch { repository.markRead(conversationId) }
@@ -76,6 +82,14 @@ class ThreadViewModel(
 
     fun applyDraft(text: String) {
         if (composer.isBlank()) composer = text
+    }
+
+    fun prefill(draft: ComposerDraft) {
+        val previous = attachments
+        composer = draft.text
+        attachments = draft.media
+        if (previous.isEmpty()) return
+        viewModelScope.launch { previous.forEach { repository.discardAttachment(it) } }
     }
 
     fun clearImagesLeftOff() {

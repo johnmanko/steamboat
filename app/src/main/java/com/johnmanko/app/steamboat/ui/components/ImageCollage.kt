@@ -6,7 +6,9 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,8 +53,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ImageCollage(images: List<PendingAttachment>, modifier: Modifier = Modifier) {
+fun ImageCollage(
+    images: List<PendingAttachment>,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+) {
     var open by remember { mutableStateOf(false) }
     val shown = images.take(3)
     val overflow = images.size > 3
@@ -61,7 +68,13 @@ fun ImageCollage(images: List<PendingAttachment>, modifier: Modifier = Modifier)
             .fillMaxWidth()
             .height(if (images.size == 2) 132.dp else 176.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable { open = true },
+            .then(
+                if (onLongClick == null) {
+                    Modifier.clickable { open = true }
+                } else {
+                    Modifier.combinedClickable(onClick = { open = true }, onLongClick = onLongClick)
+                },
+            ),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         if (shown.size == 2) {

@@ -1,7 +1,9 @@
 package com.johnmanko.app.steamboat.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
@@ -34,10 +37,12 @@ import com.johnmanko.app.steamboat.ui.theme.LocalPastel
 private val OutgoingShape = RoundedCornerShape(18.dp, 18.dp, 6.dp, 18.dp)
 private val IncomingShape = RoundedCornerShape(18.dp, 18.dp, 18.dp, 6.dp)
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
     message: MessageEntity,
     onRetry: (Long) -> Unit,
+    onLongPress: () -> Unit,
     senderName: String? = null,
     highlighted: Boolean = false,
     modifier: Modifier = Modifier,
@@ -65,6 +70,9 @@ fun MessageBubble(
             Column(
                 modifier = Modifier
                     .widthIn(max = 280.dp)
+                    .pointerInput(onLongPress) {
+                        detectTapGestures(onLongPress = { onLongPress() })
+                    }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -79,13 +87,13 @@ fun MessageBubble(
                 val media = message.mediaParts()
                 val images = media.filter { !it.isVideo }
                 media.filter { it.isVideo }.forEach { part ->
-                    MessageMedia(path = part.path, mime = part.mime)
+                    MessageMedia(path = part.path, mime = part.mime, onLongClick = onLongPress)
                 }
                 if (images.size >= 2) {
-                    ImageCollage(images)
+                    ImageCollage(images, onLongClick = onLongPress)
                 } else {
                     images.forEach { part ->
-                        MessageMedia(path = part.path, mime = part.mime)
+                        MessageMedia(path = part.path, mime = part.mime, onLongClick = onLongPress)
                     }
                 }
                 if (message.body.isNotBlank()) {
@@ -98,7 +106,16 @@ fun MessageBubble(
                     modifier = Modifier
                         .padding(horizontal = 4.dp)
                         .align(Alignment.End)
-                        .then(if (failed) Modifier.clickable { onRetry(message.id) } else Modifier),
+                        .then(
+                            if (failed) {
+                                Modifier.combinedClickable(
+                                    onClick = { onRetry(message.id) },
+                                    onLongClick = onLongPress,
+                                )
+                            } else {
+                                Modifier
+                            },
+                        ),
                 )
             }
         }

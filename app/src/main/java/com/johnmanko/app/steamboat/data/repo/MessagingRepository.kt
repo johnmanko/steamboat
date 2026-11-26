@@ -220,6 +220,9 @@ class MessagingRepository(
             AttachmentBatch(kept, skipped)
         }
 
+    suspend fun copyAttachments(parts: List<PendingAttachment>): List<PendingAttachment> =
+        withContext(Dispatchers.IO) { attachments.copy(parts) }
+
     suspend fun discardAttachment(attachment: PendingAttachment) = withContext(Dispatchers.IO) {
         attachments.discard(attachment)
     }

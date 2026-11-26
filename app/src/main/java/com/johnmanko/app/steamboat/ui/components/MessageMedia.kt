@@ -7,7 +7,9 @@ import android.net.Uri
 import android.widget.VideoView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,12 +44,14 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageMedia(
     path: String,
     mime: String?,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val video = mime?.startsWith("video/") == true
     var bitmap by remember(path) { mutableStateOf<Bitmap?>(null) }
@@ -63,7 +67,13 @@ fun MessageMedia(
             .then(frame)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.Black.copy(alpha = 0.18f))
-            .clickable { open = true },
+            .then(
+                if (onLongClick == null) {
+                    Modifier.clickable { open = true }
+                } else {
+                    Modifier.combinedClickable(onClick = { open = true }, onLongClick = onLongClick)
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         bitmap?.let { frame ->

@@ -110,6 +110,7 @@ fun ContactsRoute(
                             when (mode) {
                                 ContactsMode.Link -> R.string.link_title
                                 ContactsMode.Add -> R.string.add_person
+                                ContactsMode.Forward -> R.string.forward
                                 ContactsMode.NewMessage -> R.string.contacts_title
                             },
                         ),
@@ -147,8 +148,9 @@ fun ContactsRoute(
                 placeholder = { Text(stringResource(R.string.search)) },
                 singleLine = true,
             )
+            val choosingRecipient = mode == ContactsMode.NewMessage || mode == ContactsMode.Forward
             val typedNumber = viewModel.messageNumber
-            if (mode == ContactsMode.NewMessage && typedNumber != null) {
+            if (choosingRecipient && typedNumber != null) {
                 Button(
                     onClick = { viewModel.messageTypedNumber(typedNumber, onOpenThread) },
                     modifier = Modifier
@@ -166,7 +168,7 @@ fun ContactsRoute(
                     Column(Modifier.padding(24.dp).weight(1f)) {
                         Text(stringResource(if (query.isBlank()) R.string.no_contacts else R.string.no_matches))
                         val typed = PhoneNumbers.newContactNumber(query)
-                        if (mode == ContactsMode.NewMessage && typed != null) {
+                        if (choosingRecipient && typed != null) {
                             Button(
                                 onClick = { addTypedNumber(typed) },
                                 modifier = Modifier.padding(top = 12.dp),
@@ -186,9 +188,9 @@ fun ContactsRoute(
                         ) { index ->
                             val contact = contacts[index] ?: return@items
                             val picked = viewModel.selected.any { it.matchKey == contact.matchKey }
-                            ContactRow(contact, selected = picked && mode == ContactsMode.NewMessage) {
+                            ContactRow(contact, selected = picked && choosingRecipient) {
                                 when (mode) {
-                                    ContactsMode.NewMessage -> viewModel.toggle(contact)
+                                    ContactsMode.NewMessage, ContactsMode.Forward -> viewModel.toggle(contact)
                                     ContactsMode.Link -> {
                                         val id = conversationId ?: return@ContactRow
                                         viewModel.link(id, contact, onLinked)
@@ -203,7 +205,7 @@ fun ContactsRoute(
                     }
                 }
             }
-            if (mode == ContactsMode.NewMessage && viewModel.selected.isNotEmpty()) {
+            if (choosingRecipient && viewModel.selected.isNotEmpty()) {
                 Button(
                     onClick = { viewModel.startSelected(onOpenThread) },
                     modifier = Modifier

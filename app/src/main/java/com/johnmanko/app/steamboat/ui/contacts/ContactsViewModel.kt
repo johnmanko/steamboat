@@ -15,7 +15,7 @@ import com.johnmanko.app.steamboat.domain.PhoneNumbers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
-enum class ContactsMode { NewMessage, Link, Add }
+enum class ContactsMode { NewMessage, Link, Add, Forward }
 
 class ContactsViewModel(private val repository: MessagingRepository) : ViewModel() {
     val query = MutableStateFlow("")
