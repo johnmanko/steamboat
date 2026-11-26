@@ -6,7 +6,7 @@ Steamboat is an Android messaging app.  It's goal is style and simplicity.
 
 - Inbox of one-to-one and group threads, with contact photos and a steamboat mark beside the title.
 - Search through message history. Each match is its own row, newest first, with the term highlighted. Opening a result scrolls to that message.
-- Conversations with photo and video attachments, inline previews, and a full-screen viewer.
+- Conversations with photo and video attachments. An incoming photo or video is downloaded and shown in the thread, with an inline preview and a full-screen viewer.
 - Links in a message open in the browser.
 - Location sharing. When location is allowed, the map button inserts an OpenStreetMap or Google Maps link at the cursor. The choice is in Settings.
 - Group threads. Pick several people from Contacts, add or remove people from the header, and see each incoming sender’s name on their bubble. A group goes out as MMS.
@@ -136,7 +136,7 @@ Steamboat asks for these permissions. SMS is granted by making Steamboat the def
 
 **SMS.** `READ_SMS`, `RECEIVE_SMS`, and `SEND_SMS` let Steamboat read the existing message history, receive new texts, and send texts.
 
-**MMS.** `RECEIVE_MMS` and `RECEIVE_WAP_PUSH` are required for Android to accept Steamboat as the default SMS app. A photo, video, or group message is sent as MMS.
+**MMS.** `RECEIVE_MMS` and `RECEIVE_WAP_PUSH` let Steamboat receive a photo or video. The carrier push is downloaded and shown in the thread. A photo, video, or group message is sent as MMS.
 
 **Contacts.** `READ_CONTACTS` supplies names, numbers, and photos for the inbox and the contact picker. `WRITE_CONTACTS` is requested on the same prompt. The emulator sample inbox uses it to add its people.
 

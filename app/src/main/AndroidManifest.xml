@@ -95,6 +95,10 @@
             android:exported="false" />
 
         <receiver
+            android:name="com.johnmanko.app.steamboat.sms.MmsDownloadedReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name="com.johnmanko.app.steamboat.notify.ReplyReceiver"
             android:exported="false" />
 
