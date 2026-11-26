@@ -37,7 +37,10 @@ fun formatMessageTime(epochMillis: Long, yesterdayLabel: String): String {
 }
 
 fun initials(title: String): String {
-    val parts = title.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    val trimmed = title.trim()
+    val digits = PhoneNumbers.digits(trimmed)
+    if (trimmed.none { it.isLetter() } && digits.length >= 2) return digits.takeLast(2)
+    val parts = trimmed.split(Regex("\\s+")).filter { it.isNotEmpty() }
     return when {
         parts.isEmpty() -> "?"
         parts.size == 1 -> parts[0].take(2).uppercase(Locale.getDefault())
