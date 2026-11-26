@@ -56,13 +56,17 @@ class ContactSync(private val context: Context) {
     }
 
     /** Saves a phone-only contact. The display name is the formatted number. */
-    fun insert(number: String): Boolean {
+    fun insert(number: String): Boolean = insert(PhoneNumbers.display(number), number)
+
+    /** Saves a contact for [number]. A blank [name] uses the formatted number. */
+    fun insert(name: String, number: String): Boolean {
         val granted = ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.WRITE_CONTACTS,
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!granted) return false
-        val display = PhoneNumbers.display(number)
+        val display = name.trim().ifBlank { PhoneNumbers.display(number) }
+        val phone = PhoneNumbers.display(number)
         val operations = arrayListOf(
             ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
                 .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
@@ -82,7 +86,7 @@ class ContactSync(private val context: Context) {
                     ContactsContract.Data.MIMETYPE,
                     ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
                 )
-                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, display)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
                 .withValue(
                     ContactsContract.CommonDataKinds.Phone.TYPE,
                     ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE,
