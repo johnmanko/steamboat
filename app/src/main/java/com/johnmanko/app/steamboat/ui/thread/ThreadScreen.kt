@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -122,6 +124,7 @@ fun ThreadRoute(
     val threadAlert = alerts[conversationId]
     val messages = viewModel.messages.collectAsLazyPagingItems()
     val listState = rememberLazyListState()
+    var listHeight by remember { mutableIntStateOf(0) }
     var menuOpen by remember { mutableStateOf(false) }
     var forwardMessage by remember { mutableStateOf<MessageEntity?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -147,10 +150,10 @@ fun ThreadRoute(
             if (ActiveConversation.id.value == conversationId) ActiveConversation.id.value = null
         }
     }
-    LaunchedEffect(messages.itemCount) {
+    LaunchedEffect(messages.itemCount, listHeight) {
         if (focusMessageId > 0L) return@LaunchedEffect
         if (messages.itemCount > 0 && listState.firstVisibleItemIndex <= 1) {
-            listState.animateScrollToItem(0)
+            listState.scrollToItem(0)
         }
     }
     var placedFocus by remember(focusMessageId) { mutableStateOf(false) }
@@ -304,7 +307,9 @@ fun ThreadRoute(
                     LazyColumn(
                         state = listState,
                         reverseLayout = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onSizeChanged { listHeight = it.height },
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
