@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MmsPduTest {
@@ -67,6 +68,22 @@ class MmsPduTest {
         assertArrayEquals(picture, message?.media)
         assertEquals("image/jpeg", message?.mediaMime)
         assertNull(MmsPdu.parseNotification(pdu))
+    }
+
+    @Test
+    fun aSendRequestCarriesEveryImage() {
+        val pdu = MmsPdu.sendRequest(
+            addresses = listOf("5550101001"),
+            text = "Hi",
+            media = listOf(
+                MmsPart("image/jpeg", byteArrayOf(1, 2)),
+                MmsPart("image/png", byteArrayOf(3, 4, 5)),
+            ),
+        )
+        val text = pdu.toString(Charsets.ISO_8859_1)
+        assertTrue(text.contains("image/jpeg"))
+        assertTrue(text.contains("image/png"))
+        assertTrue(text.contains("Hi"))
     }
 
     @Test

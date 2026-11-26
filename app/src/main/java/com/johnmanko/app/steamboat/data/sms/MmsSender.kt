@@ -6,27 +6,31 @@ import android.content.Intent
 import android.telephony.PhoneNumberUtils
 import android.telephony.SmsManager
 import androidx.core.content.FileProvider
+import com.johnmanko.app.steamboat.domain.PendingAttachment
 import com.johnmanko.app.steamboat.notify.Notify
 import com.johnmanko.app.steamboat.sms.SmsSentReceiver
 import java.io.File
+import java.io.IOException
 
 class MmsSender(private val context: Context) {
     fun send(
         messageId: Long,
         addresses: List<String>,
         text: String,
-        mediaPath: String?,
-        mediaMime: String?,
+        media: List<PendingAttachment>,
     ) {
-        val media = mediaPath?.let { path -> File(path).takeIf { it.isFile }?.readBytes() }
+        val parts = media.map { item ->
+            val file = File(item.path)
+            if (!file.isFile) throw IOException("Missing attachment")
+            MmsPart(item.mime, file.readBytes())
+        }
         val destinations = addresses.map { address ->
             PhoneNumberUtils.normalizeNumber(address).ifBlank { address }
         }
         val pdu = MmsPdu.sendRequest(
             addresses = destinations,
             text = text,
-            media = media,
-            mediaMime = media?.let { mediaMime },
+            media = parts,
         )
         val dir = File(context.cacheDir, "mms").apply { mkdirs() }
         val file = File(dir, "$messageId.mms")

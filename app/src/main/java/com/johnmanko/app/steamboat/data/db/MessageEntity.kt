@@ -4,6 +4,8 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import com.johnmanko.app.steamboat.domain.MessageAttachments
+import com.johnmanko.app.steamboat.domain.PendingAttachment
 
 @Entity(
     tableName = "messages",
@@ -32,12 +34,20 @@ data class MessageEntity(
     val providerKey: String?,
     val mediaPath: String? = null,
     val mediaMime: String? = null,
+    val attachments: String? = null,
     val senderMatchKey: String? = null,
 ) {
+    fun mediaParts(): List<PendingAttachment> {
+        val stored = MessageAttachments.decode(attachments)
+        if (stored.isNotEmpty()) return stored
+        val path = mediaPath ?: return emptyList()
+        return listOf(PendingAttachment(path, mediaMime ?: "image/jpeg"))
+    }
+
     fun listSnippet(): String = when {
         body.isNotBlank() -> body
-        mediaMime?.startsWith("video/") == true -> "Video"
-        !mediaPath.isNullOrBlank() -> "Photo"
+        mediaParts().any { it.isVideo } || mediaMime?.startsWith("video/") == true -> "Video"
+        mediaParts().isNotEmpty() || !mediaPath.isNullOrBlank() -> "Photo"
         else -> ""
     }
 }
