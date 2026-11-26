@@ -66,6 +66,14 @@ interface MessageDao {
 
     @Query(
         """
+        SELECT providerKey FROM messages
+        WHERE conversationId = :conversationId AND providerKey IS NOT NULL
+        """,
+    )
+    suspend fun providerKeys(conversationId: Long): List<String>
+
+    @Query(
+        """
         SELECT id FROM messages
         WHERE conversationId = :conversationId
           AND outgoing = 1

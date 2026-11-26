@@ -21,6 +21,7 @@ import com.johnmanko.app.steamboat.data.sms.MmsArchive
 import com.johnmanko.app.steamboat.data.sms.MmsBudget
 import com.johnmanko.app.steamboat.data.sms.MmsSender
 import com.johnmanko.app.steamboat.data.sms.RcsAvailability
+import com.johnmanko.app.steamboat.data.sms.PhoneMessages
 import com.johnmanko.app.steamboat.data.sms.SmsImporter
 import com.johnmanko.app.steamboat.data.sms.SmsSender
 import com.johnmanko.app.steamboat.domain.GroupPerson
@@ -59,6 +60,7 @@ class MessagingRepository(
     private val importMutex = Mutex()
     private val mmsArchive = MmsArchive(context)
     private val mmsBudget = MmsBudget(context)
+    private val phoneMessages = PhoneMessages(context)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun conversations(query: Flow<String>): Flow<PagingData<ConversationEntity>> =
@@ -182,7 +184,11 @@ class MessagingRepository(
     }
 
     suspend fun deleteConversation(conversationId: Long) = withContext(Dispatchers.IO) {
-        store.deleteConversation(conversationId)
+        val conversation = store.getConversation(conversationId) ?: return@withContext
+        val group = store.memberAddresses(conversationId).size >= 2
+        val system = if (group) PhoneMessages.Rows.EMPTY else phoneMessages.find(conversation.address)
+        store.suppressAndDelete(conversationId, store.providerKeys(conversationId) + system.providerKeys())
+        if (!group) phoneMessages.delete(system)
         notifications.cancel(conversationId)
         notifications.forgetThread(conversationId)
     }

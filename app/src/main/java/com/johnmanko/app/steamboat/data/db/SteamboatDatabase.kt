@@ -15,8 +15,9 @@ import kotlinx.coroutines.Dispatchers
         ConversationEntity::class,
         ConversationMemberEntity::class,
         MessageEntity::class,
+        DeletedMessageEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class SteamboatDatabase : RoomDatabase() {
@@ -28,6 +29,8 @@ abstract class SteamboatDatabase : RoomDatabase() {
 
     abstract fun messages(): MessageDao
 
+    abstract fun deletedMessages(): DeletedMessageDao
+
     companion object {
         fun create(context: Context): SteamboatDatabase {
             val file = context.applicationContext.getDatabasePath("steamboat.db")
@@ -38,7 +41,7 @@ abstract class SteamboatDatabase : RoomDatabase() {
             )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
         }
 
@@ -79,6 +82,22 @@ abstract class SteamboatDatabase : RoomDatabase() {
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override suspend fun migrate(connection: SQLiteConnection) {
                 connection.prepare("ALTER TABLE messages ADD COLUMN attachments TEXT").use { it.step() }
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.prepare(
+                    """
+                    CREATE TABLE IF NOT EXISTS `deleted_messages` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `providerKey` TEXT NOT NULL
+                    )
+                    """.trimIndent(),
+                ).use { it.step() }
+                connection.prepare(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_deleted_messages_providerKey` ON `deleted_messages` (`providerKey`)",
+                ).use { it.step() }
             }
         }
     }
