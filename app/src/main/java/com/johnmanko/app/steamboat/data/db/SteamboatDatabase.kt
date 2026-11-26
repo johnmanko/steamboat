@@ -16,7 +16,7 @@ import kotlinx.coroutines.Dispatchers
         ConversationMemberEntity::class,
         MessageEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class SteamboatDatabase : RoomDatabase() {
@@ -38,7 +38,7 @@ abstract class SteamboatDatabase : RoomDatabase() {
             )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
         }
 
@@ -73,6 +73,12 @@ abstract class SteamboatDatabase : RoomDatabase() {
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override suspend fun migrate(connection: SQLiteConnection) {
                 connection.prepare("ALTER TABLE messages ADD COLUMN senderMatchKey TEXT").use { it.step() }
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.prepare("ALTER TABLE messages ADD COLUMN attachments TEXT").use { it.step() }
             }
         }
     }

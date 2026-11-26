@@ -29,7 +29,9 @@ class ThreadViewModel(
     val messages = repository.messages(conversationId).cachedIn(viewModelScope)
     var composer by mutableStateOf("")
         private set
-    var attachment by mutableStateOf<PendingAttachment?>(null)
+    var attachments by mutableStateOf<List<PendingAttachment>>(emptyList())
+        private set
+    var imagesLeftOff by mutableStateOf(0)
         private set
 
     init {
@@ -56,25 +58,31 @@ class ThreadViewModel(
         if (composer.isBlank()) composer = text
     }
 
-    fun attach(uri: Uri) {
+    fun clearImagesLeftOff() {
+        imagesLeftOff = 0
+    }
+
+    fun attach(uris: List<Uri>) {
+        if (uris.isEmpty()) return
         viewModelScope.launch {
-            attachment?.let { repository.discardAttachment(it) }
-            attachment = runCatching { repository.stageAttachment(uri) }.getOrNull()
+            val batch = repository.addAttachments(attachments, uris)
+            attachments = batch.attachments
+            if (batch.skipped > 0) imagesLeftOff += 1
         }
     }
 
-    fun clearAttachment() {
-        val current = attachment ?: return
-        attachment = null
+    fun removeAttachment(path: String) {
+        val current = attachments.find { it.path == path } ?: return
+        attachments = attachments.filterNot { it.path == path }
         viewModelScope.launch { repository.discardAttachment(current) }
     }
 
     fun send() {
         val body = composer
-        val pending = attachment
-        if (body.isBlank() && pending == null) return
+        val pending = attachments
+        if (body.isBlank() && pending.isEmpty()) return
         composer = ""
-        attachment = null
+        attachments = emptyList()
         viewModelScope.launch { repository.send(conversationId, body, pending) }
     }
 

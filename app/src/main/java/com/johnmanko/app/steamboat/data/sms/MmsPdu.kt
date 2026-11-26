@@ -8,6 +8,8 @@ internal data class MmsNotice(
     val transactionId: String?,
 )
 
+internal data class MmsPart(val mime: String, val data: ByteArray)
+
 internal data class MmsRetrieved(
     val from: String?,
     val text: String,
@@ -17,14 +19,23 @@ internal data class MmsRetrieved(
 )
 
 /**
- * MMS PDUs. Outgoing messages are a send-request with text and one media part.
+ * MMS PDUs. Outgoing messages are a send-request with text and one or more media parts.
  * Incoming messages arrive as a notification, then a retrieve-confirmation.
  */
 internal object MmsPdu {
-    fun sendRequest(addresses: List<String>, text: String, media: ByteArray?, mediaMime: String?): ByteArray {
-        val parts = ArrayList<ByteArray>(2)
+    fun sendRequest(addresses: List<String>, text: String, media: ByteArray?, mediaMime: String?): ByteArray =
+        sendRequest(
+            addresses = addresses,
+            text = text,
+            media = if (media != null && !mediaMime.isNullOrBlank()) listOf(MmsPart(mediaMime, media)) else emptyList(),
+        )
+
+    fun sendRequest(addresses: List<String>, text: String, media: List<MmsPart>): ByteArray {
+        val parts = ArrayList<ByteArray>(media.size + 1)
         if (text.isNotBlank()) parts += part("text/plain", text.toByteArray(Charsets.UTF_8))
-        if (media != null && !mediaMime.isNullOrBlank()) parts += part(mediaMime, media)
+        media.forEach { item ->
+            if (item.data.isNotEmpty() && item.mime.isNotBlank()) parts += part(item.mime, item.data)
+        }
         if (parts.isEmpty()) parts += part("text/plain", byteArrayOf())
 
         val body = ByteArrayOutputStream()

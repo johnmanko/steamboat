@@ -18,16 +18,19 @@ import com.johnmanko.app.steamboat.data.db.MessageEntity
 import com.johnmanko.app.steamboat.data.sms.AttachmentStore
 import com.johnmanko.app.steamboat.data.sms.MessageTransport
 import com.johnmanko.app.steamboat.data.sms.MmsArchive
+import com.johnmanko.app.steamboat.data.sms.MmsBudget
 import com.johnmanko.app.steamboat.data.sms.MmsSender
 import com.johnmanko.app.steamboat.data.sms.RcsAvailability
 import com.johnmanko.app.steamboat.data.sms.SmsImporter
 import com.johnmanko.app.steamboat.data.sms.SmsSender
 import com.johnmanko.app.steamboat.domain.GroupPerson
+import com.johnmanko.app.steamboat.domain.MessageAttachments
 import com.johnmanko.app.steamboat.domain.MessageStatus
 import com.johnmanko.app.steamboat.domain.PendingAttachment
 import com.johnmanko.app.steamboat.domain.PhoneNumbers
 import com.johnmanko.app.steamboat.notify.ActiveConversation
 import com.johnmanko.app.steamboat.notify.NotificationCenter
+import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,6 +58,7 @@ class MessagingRepository(
     private val contactMutex = Mutex()
     private val importMutex = Mutex()
     private val mmsArchive = MmsArchive(context)
+    private val mmsBudget = MmsBudget(context)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun conversations(query: Flow<String>): Flow<PagingData<ConversationEntity>> =
@@ -201,6 +205,30 @@ class MessagingRepository(
         attachments.stage(uri)
     }
 
+    suspend fun addAttachments(existing: List<PendingAttachment>, uris: List<Uri>): AttachmentBatch =
+        withContext(Dispatchers.IO) {
+            val max = mmsBudget.maxBytes()
+            val kept = existing.toMutableList()
+            var used = existing.sumOf { File(it.path).length() }
+            var skipped = 0
+            uris.forEach { uri ->
+                val staged = runCatching { attachments.stage(uri) }.getOrNull()
+                if (staged == null) {
+                    skipped += 1
+                    return@forEach
+                }
+                val size = File(staged.path).length()
+                if (MessageAttachments.fits(used, size, max)) {
+                    kept += staged
+                    used += size
+                } else {
+                    attachments.discard(staged)
+                    skipped += 1
+                }
+            }
+            AttachmentBatch(kept, skipped)
+        }
+
     suspend fun discardAttachment(attachment: PendingAttachment) = withContext(Dispatchers.IO) {
         attachments.discard(attachment)
     }
@@ -208,12 +236,13 @@ class MessagingRepository(
     suspend fun send(
         conversationId: Long,
         rawBody: String,
-        attachment: PendingAttachment? = null,
+        media: List<PendingAttachment> = emptyList(),
     ) = withContext(Dispatchers.IO) {
         val body = rawBody.trim()
-        if ((body.isEmpty() && attachment == null) || body.length > MAX_BODY) return@withContext
+        if ((body.isEmpty() && media.isEmpty()) || body.length > MAX_BODY) return@withContext
         val conversation = store.getConversation(conversationId) ?: return@withContext
         val sentAt = System.currentTimeMillis()
+        val first = media.firstOrNull()
         val messageId = store.addMessage(
             message = MessageEntity(
                 conversationId = conversationId,
@@ -223,8 +252,9 @@ class MessagingRepository(
                 status = MessageStatus.SENDING,
                 seen = true,
                 providerKey = null,
-                mediaPath = attachment?.path,
-                mediaMime = attachment?.mime,
+                mediaPath = first?.path,
+                mediaMime = first?.mime,
+                attachments = MessageAttachments.encode(media).ifBlank { null },
             ),
             countUnread = false,
         )
@@ -232,7 +262,7 @@ class MessagingRepository(
             store.updateStatus(messageId, MessageStatus.FAILED)
             return@withContext
         }
-        dispatch(messageId, destinations(conversation), body, attachment)
+        dispatch(messageId, destinations(conversation), body, media)
     }
 
     suspend fun retry(messageId: Long) = withContext(Dispatchers.IO) {
@@ -240,10 +270,7 @@ class MessagingRepository(
         if (!message.outgoing || message.status != MessageStatus.FAILED) return@withContext
         val conversation = store.getConversation(message.conversationId) ?: return@withContext
         store.updateStatus(messageId, MessageStatus.SENDING)
-        val attachment = message.mediaPath?.let { path ->
-            PendingAttachment(path, message.mediaMime ?: "application/octet-stream")
-        }
-        dispatch(messageId, destinations(conversation), message.body, attachment)
+        dispatch(messageId, destinations(conversation), message.body, message.mediaParts())
     }
 
     private suspend fun destinations(conversation: ConversationEntity): List<String> {
@@ -255,22 +282,21 @@ class MessagingRepository(
         messageId: Long,
         addresses: List<String>,
         body: String,
-        attachment: PendingAttachment?,
+        media: List<PendingAttachment>,
     ) {
         if (addresses.isEmpty()) {
             store.updateStatus(messageId, MessageStatus.FAILED)
             return
         }
         val registered = rcs.isRegistered()
-        val transport = MessageTransport.choose(registered, attachment != null, addresses.size)
+        val transport = MessageTransport.choose(registered, media.isNotEmpty(), addresses.size)
         try {
             when (transport) {
                 MessageTransport.MMS -> mmsSender.send(
                     messageId,
                     addresses,
                     body,
-                    attachment?.path,
-                    attachment?.mime,
+                    media,
                 )
                 MessageTransport.RCS -> {
                     Log.i(TAG, "RCS is registered; no app send API, falling back to SMS")
@@ -411,6 +437,8 @@ class MessagingRepository(
 
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    data class AttachmentBatch(val attachments: List<PendingAttachment>, val skipped: Int)
 
     private companion object {
         const val TAG = "Steamboat"

@@ -47,6 +47,7 @@ fun MessageMedia(
     path: String,
     mime: String?,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val video = mime?.startsWith("video/") == true
     var bitmap by remember(path) { mutableStateOf<Bitmap?>(null) }
@@ -56,10 +57,10 @@ fun MessageMedia(
             if (video) videoFrame(path) else decodeSampled(path, 900)
         }
     }
+    val frame = if (compact) Modifier.size(88.dp) else Modifier.fillMaxWidth().height(180.dp)
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .height(180.dp)
+            .then(frame)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.Black.copy(alpha = 0.18f))
             .clickable { open = true },

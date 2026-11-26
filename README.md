@@ -6,7 +6,7 @@ Steamboat is an Android messaging app.  It's goal is style and simplicity.
 
 - Inbox of one-to-one and group threads, with contact photos and a steamboat mark beside the title.
 - Search through message history. Each match is its own row, newest first, with the term highlighted. Opening a result scrolls to that message.
-- Conversations with photo and video attachments. An incoming photo or video is downloaded and shown in the thread, with an inline preview and a full-screen viewer.
+- Conversations with photo and video attachments. One message can hold several images until they reach the carrier’s MMS size limit. An incoming photo or video is downloaded and shown in the thread, with an inline preview and a full-screen viewer.
 - Links in a message open in the browser.
 - Location sharing. When location is allowed, the map button inserts an OpenStreetMap or Google Maps link at the cursor. The choice is in Settings.
 - Group threads. Pick several people from Contacts, add or remove people from the header, and see each incoming sender’s name on their bubble. A group goes out as MMS.
@@ -144,7 +144,7 @@ Steamboat asks for these permissions. SMS is granted by making Steamboat the def
 
 **Location.** `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` are used by the map button. An approximate grant is enough to insert a map link. Location sharing can be turned off in Settings.
 
-Photos and videos come from the system photo picker. Steamboat does not ask for access to the photo library.
+**Photos.** `READ_MEDIA_IMAGES` and `READ_MEDIA_VIDEO` (or photo access on older Android) let the chooser see each file’s size. An image that would push the message past the carrier MMS limit cannot be selected.
 
 ## Sideloading
 

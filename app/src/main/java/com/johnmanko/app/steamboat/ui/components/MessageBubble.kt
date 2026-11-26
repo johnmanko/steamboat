@@ -76,8 +76,17 @@ fun MessageBubble(
                         modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
-                message.mediaPath?.let { path ->
-                    MessageMedia(path = path, mime = message.mediaMime)
+                val media = message.mediaParts()
+                val images = media.filter { !it.isVideo }
+                media.filter { it.isVideo }.forEach { part ->
+                    MessageMedia(path = part.path, mime = part.mime)
+                }
+                if (images.size >= 2) {
+                    ImageCollage(images)
+                } else {
+                    images.forEach { part ->
+                        MessageMedia(path = part.path, mime = part.mime)
+                    }
                 }
                 if (message.body.isNotBlank()) {
                     MessageBody(message.body, ink)

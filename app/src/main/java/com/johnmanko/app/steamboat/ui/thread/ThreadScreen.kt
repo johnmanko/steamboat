@@ -2,13 +2,10 @@ package com.johnmanko.app.steamboat.ui.thread
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
@@ -23,6 +20,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -300,22 +299,45 @@ fun ThreadRoute(
                     }
                 }
             }
-            val picker = rememberLauncherForActivityResult(PickMedia()) { uri: Uri? ->
-                if (uri != null) viewModel.attach(uri)
+            val context = LocalContext.current
+            LaunchedEffect(viewModel.imagesLeftOff) {
+                if (viewModel.imagesLeftOff > 0) {
+                    Toast.makeText(context, R.string.images_left_off, Toast.LENGTH_LONG).show()
+                    viewModel.clearImagesLeftOff()
+                }
+            }
+            var chooserOpen by remember { mutableStateOf(false) }
+            val photoAccess = rememberLauncherForActivityResult(RequestMultiplePermissions()) { grants ->
+                if (grants.values.any { it }) {
+                    chooserOpen = true
+                } else {
+                    Toast.makeText(context, R.string.photo_access_needed, Toast.LENGTH_LONG).show()
+                }
             }
             Composer(
                 text = viewModel.composer,
-                attachment = viewModel.attachment,
+                attachments = viewModel.attachments,
                 phrases = phrases,
                 location = locationSettings,
                 onText = viewModel::onComposerChange,
                 onAttach = {
-                    picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageAndVideo))
+                    if (canReadPhotos(context)) chooserOpen = true
+                    else photoAccess.launch(photoPermissions())
                 },
                 onPickReply = viewModel::useReply,
-                onRemoveAttachment = viewModel::clearAttachment,
+                onRemoveAttachment = viewModel::removeAttachment,
                 onSend = viewModel::send,
             )
+            if (chooserOpen) {
+                ImageChooser(
+                    usedBytes = viewModel.attachments.sumOf { java.io.File(it.path).length() },
+                    onDismiss = { chooserOpen = false },
+                    onAdd = { uris ->
+                        chooserOpen = false
+                        viewModel.attach(uris)
+                    },
+                )
+            }
         }
     }
 
@@ -426,26 +448,16 @@ private fun PeopleDialog(
     )
 }
 
-/**
- * The system photo picker is a see-through activity on this task. Leaving it there
- * hides Steamboat from Recents, so the next app the user opens appears to replace it.
- * No-history finishes the picker as soon as the user leaves it.
- */
-private class PickMedia : PickVisualMedia() {
-    override fun createIntent(context: Context, input: PickVisualMediaRequest): Intent =
-        super.createIntent(context, input).addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-}
-
 @Composable
 private fun Composer(
     text: String,
-    attachment: PendingAttachment?,
+    attachments: List<PendingAttachment>,
     phrases: List<String>,
     location: LocationSettings,
     onText: (String) -> Unit,
     onAttach: () -> Unit,
     onPickReply: (String) -> Unit,
-    onRemoveAttachment: () -> Unit,
+    onRemoveAttachment: (String) -> Unit,
     onSend: () -> Unit,
 ) {
     var repliesOpen by remember { mutableStateOf(false) }
@@ -478,15 +490,22 @@ private fun Composer(
         else Toast.makeText(context, R.string.location_permission_needed, Toast.LENGTH_SHORT).show()
     }
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-        if (attachment != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MessageMedia(
-                    path = attachment.path,
-                    mime = attachment.mime,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onRemoveAttachment) {
-                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.remove_attachment))
+        if (attachments.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(attachments, key = { it.path }) { item ->
+                    Box {
+                        MessageMedia(path = item.path, mime = item.mime, compact = true)
+                        IconButton(
+                            onClick = { onRemoveAttachment(item.path) },
+                            modifier = Modifier.align(Alignment.TopEnd).size(32.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.remove_attachment),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -555,13 +574,43 @@ private fun Composer(
             )
             IconButton(
                 onClick = onSend,
-                enabled = text.isNotBlank() || attachment != null,
+                enabled = text.isNotBlank() || attachments.isNotEmpty(),
                 modifier = Modifier.padding(start = 4.dp),
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.send))
             }
         }
     }
+}
+
+private fun canReadPhotos(context: Context): Boolean {
+    val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        listOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VIDEO,
+            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+        )
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        listOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+    } else {
+        listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+    }
+    return permissions.any { permission ->
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+}
+
+private fun photoPermissions(): Array<String> = when {
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> arrayOf(
+        Manifest.permission.READ_MEDIA_IMAGES,
+        Manifest.permission.READ_MEDIA_VIDEO,
+        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+    )
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> arrayOf(
+        Manifest.permission.READ_MEDIA_IMAGES,
+        Manifest.permission.READ_MEDIA_VIDEO,
+    )
+    else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
 }
 
 private fun locationGranted(context: Context): Boolean {
