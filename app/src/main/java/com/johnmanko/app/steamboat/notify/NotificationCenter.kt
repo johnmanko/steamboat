@@ -71,7 +71,7 @@ class NotificationCenter(
         val style = NotificationCompat.MessagingStyle(self)
         recent.asReversed().forEach { message ->
             style.addMessage(
-                message.body,
+                message.body.ifBlank { message.listSnippet() },
                 message.sentAt,
                 if (message.outgoing) self else sender,
             )

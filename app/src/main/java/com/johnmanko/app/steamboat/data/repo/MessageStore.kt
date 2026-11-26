@@ -213,6 +213,8 @@ class MessageStore(private val database: SteamboatDatabase) {
         )
     }
 
+    suspend fun hasProviderKey(providerKey: String): Boolean = messages.findByProviderKey(providerKey) != null
+
     suspend fun addMessage(message: MessageEntity, countUnread: Boolean): Long = database.withWriteTransaction {
         val id = messages.insert(message)
         conversations.updateSnippetIfNewer(message.conversationId, message.listSnippet(), message.sentAt)

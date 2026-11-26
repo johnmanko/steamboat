@@ -9,15 +9,8 @@ import java.util.UUID
 class AttachmentStore(private val context: Context) {
     fun stage(uri: Uri): PendingAttachment {
         val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
-        val ext = when {
-            mime.startsWith("video/") -> "mp4"
-            mime == "image/png" -> "png"
-            mime == "image/gif" -> "gif"
-            mime == "image/webp" -> "webp"
-            else -> "jpg"
-        }
         val dir = File(context.filesDir, "media").apply { mkdirs() }
-        val file = File(dir, "${UUID.randomUUID()}.$ext")
+        val file = File(dir, "${UUID.randomUUID()}.${extension(mime)}")
         context.contentResolver.openInputStream(uri).use { input ->
             requireNotNull(input) { "Could not read the selected file" }
             file.outputStream().use { input.copyTo(it) }
@@ -25,7 +18,23 @@ class AttachmentStore(private val context: Context) {
         return PendingAttachment(path = file.absolutePath, mime = mime)
     }
 
+    fun save(bytes: ByteArray, mime: String?): String {
+        val type = mime ?: "image/jpeg"
+        val dir = File(context.filesDir, "media").apply { mkdirs() }
+        val file = File(dir, "${UUID.randomUUID()}.${extension(type)}")
+        file.writeBytes(bytes)
+        return file.absolutePath
+    }
+
     fun discard(attachment: PendingAttachment) {
         File(attachment.path).delete()
+    }
+
+    private fun extension(mime: String): String = when {
+        mime.startsWith("video/") -> "mp4"
+        mime == "image/png" -> "png"
+        mime == "image/gif" -> "gif"
+        mime == "image/webp" -> "webp"
+        else -> "jpg"
     }
 }

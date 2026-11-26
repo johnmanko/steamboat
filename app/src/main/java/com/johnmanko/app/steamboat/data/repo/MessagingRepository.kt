@@ -17,6 +17,7 @@ import com.johnmanko.app.steamboat.data.db.ConversationEntity
 import com.johnmanko.app.steamboat.data.db.MessageEntity
 import com.johnmanko.app.steamboat.data.sms.AttachmentStore
 import com.johnmanko.app.steamboat.data.sms.MessageTransport
+import com.johnmanko.app.steamboat.data.sms.MmsArchive
 import com.johnmanko.app.steamboat.data.sms.MmsSender
 import com.johnmanko.app.steamboat.data.sms.RcsAvailability
 import com.johnmanko.app.steamboat.data.sms.SmsImporter
@@ -53,6 +54,7 @@ class MessagingRepository(
 ) {
     private val contactMutex = Mutex()
     private val importMutex = Mutex()
+    private val mmsArchive = MmsArchive(context)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun conversations(query: Flow<String>): Flow<PagingData<ConversationEntity>> =
@@ -280,7 +282,30 @@ class MessagingRepository(
         ingestIncoming(address, body, sentAt, providerKey)
     }
 
-    suspend fun ingestIncoming(address: String, body: String, sentAt: Long, providerKey: String?) =
+    suspend fun acceptDeliveredMms(
+        address: String,
+        body: String,
+        sentAt: Long,
+        media: ByteArray?,
+        mediaMime: String?,
+        transactionId: String?,
+    ) = withContext(Dispatchers.IO) {
+        if (body.isBlank() && (media == null || media.isEmpty())) return@withContext
+        val stable = transactionId?.takeIf { it.isNotBlank() }?.let { "mms:$it" }
+        if (stable != null && store.hasProviderKey(stable)) return@withContext
+        val providerKey = stable ?: mmsArchive.insertIncoming(address, body, sentAt, media, mediaMime)
+        val mediaPath = if (media != null && media.isNotEmpty()) attachments.save(media, mediaMime) else null
+        ingestIncoming(address, body, sentAt, providerKey, mediaPath, mediaMime)
+    }
+
+    suspend fun ingestIncoming(
+        address: String,
+        body: String,
+        sentAt: Long,
+        providerKey: String?,
+        mediaPath: String? = null,
+        mediaMime: String? = null,
+    ) =
         withContext(Dispatchers.IO) {
             if (PhoneNumbers.matchKey(address).isEmpty()) return@withContext
             val conversationId = store.openConversation(
@@ -290,7 +315,25 @@ class MessagingRepository(
                 lookupKey = null,
                 manual = false,
             )
-            if (!providerKey.isNullOrBlank()) {
+            val active = ActiveConversation.id.value == conversationId
+            val multimedia = mediaPath != null || providerKey?.startsWith("mms:") == true
+            if (multimedia) {
+                if (!providerKey.isNullOrBlank() && store.hasProviderKey(providerKey)) return@withContext
+                store.addMessage(
+                    message = MessageEntity(
+                        conversationId = conversationId,
+                        body = body,
+                        sentAt = sentAt,
+                        outgoing = false,
+                        status = MessageStatus.RECEIVED,
+                        seen = active,
+                        providerKey = providerKey,
+                        mediaPath = mediaPath,
+                        mediaMime = mediaMime,
+                    ),
+                    countUnread = true,
+                )
+            } else if (!providerKey.isNullOrBlank()) {
                 store.importMessages(
                     listOf(
                         ImportedSms(
@@ -299,13 +342,12 @@ class MessagingRepository(
                             body = body,
                             sentAt = sentAt,
                             outgoing = false,
-                            seen = ActiveConversation.id.value == conversationId,
+                            seen = active,
                             status = MessageStatus.RECEIVED,
                         ),
                     ),
                 )
             } else {
-                val active = ActiveConversation.id.value == conversationId
                 store.addMessage(
                     message = MessageEntity(
                         conversationId = conversationId,
