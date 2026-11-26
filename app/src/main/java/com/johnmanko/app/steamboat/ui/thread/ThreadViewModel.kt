@@ -33,6 +33,10 @@ class ThreadViewModel(
         private set
     var imagesLeftOff by mutableStateOf(0)
         private set
+    var knownContact by mutableStateOf(false)
+        private set
+    var contactSaved by mutableStateOf<Boolean?>(null)
+        private set
 
     init {
         navigator.takeDraft(conversationId)?.let { applyDraft(it) }
@@ -44,6 +48,22 @@ class ThreadViewModel(
             }
         }
         viewModelScope.launch { repository.markRead(conversationId) }
+        viewModelScope.launch {
+            conversation.collect { current ->
+                val key = current?.matchKey.orEmpty()
+                knownContact = repository.hasContact(key)
+            }
+        }
+    }
+
+    fun saveContact(name: String) {
+        viewModelScope.launch {
+            contactSaved = repository.addContact(conversationId, name)
+        }
+    }
+
+    fun clearContactSaved() {
+        contactSaved = null
     }
 
     fun onComposerChange(value: String) {

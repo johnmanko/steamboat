@@ -7,6 +7,7 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -115,6 +116,18 @@ fun ThreadRoute(
     val listState = rememberLazyListState()
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var addContactOpen by remember { mutableStateOf(false) }
+    var contactName by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val writeContacts = rememberLauncherForActivityResult(RequestPermission()) { granted ->
+        if (granted) viewModel.saveContact(contactName)
+        else Toast.makeText(context, R.string.contact_not_saved, Toast.LENGTH_LONG).show()
+    }
+    LaunchedEffect(viewModel.contactSaved) {
+        val saved = viewModel.contactSaved ?: return@LaunchedEffect
+        if (!saved) Toast.makeText(context, R.string.contact_not_saved, Toast.LENGTH_LONG).show()
+        viewModel.clearContactSaved()
+    }
     var peopleOpen by remember { mutableStateOf(false) }
     var notificationsOpen by remember { mutableStateOf(false) }
     val group = members.size >= 2
@@ -213,6 +226,16 @@ fun ThreadRoute(
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         val linked = conversation?.contactLookupKey != null
+                        if (!group && conversation != null && !linked && !viewModel.knownContact) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.add_contact)) },
+                                onClick = {
+                                    menuOpen = false
+                                    contactName = ""
+                                    addContactOpen = true
+                                },
+                            )
+                        }
                         if (!group) {
                             DropdownMenuItem(
                                 text = {
@@ -348,6 +371,41 @@ fun ThreadRoute(
             preferences = notificationSettings,
             notifications = notifications,
             onDismiss = { notificationsOpen = false },
+        )
+    }
+
+    if (addContactOpen) {
+        val number = conversation?.address?.let(::formatPhone).orEmpty()
+        AlertDialog(
+            onDismissRequest = { addContactOpen = false },
+            title = { Text(stringResource(R.string.add_contact)) },
+            text = {
+                Column {
+                    if (number.isNotBlank()) {
+                        Text(number, modifier = Modifier.padding(bottom = 12.dp))
+                    }
+                    OutlinedTextField(
+                        value = contactName,
+                        onValueChange = { contactName = it },
+                        label = { Text(stringResource(R.string.add_contact_name)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    addContactOpen = false
+                    val granted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.WRITE_CONTACTS,
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (granted) viewModel.saveContact(contactName) else writeContacts.launch(Manifest.permission.WRITE_CONTACTS)
+                }) { Text(stringResource(R.string.add_contact)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { addContactOpen = false }) { Text(stringResource(R.string.cancel)) }
+            },
         )
     }
 

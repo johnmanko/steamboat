@@ -177,6 +177,21 @@ class MessagingRepository(
         )
     }
 
+    suspend fun hasContact(matchKey: String): Boolean = withContext(Dispatchers.IO) {
+        matchKey.isNotEmpty() && store.contactByMatchKey(matchKey) != null
+    }
+
+    /** Saves this conversation's number as a contact and links the thread. */
+    suspend fun addContact(conversationId: Long, name: String): Boolean = withContext(Dispatchers.IO) {
+        val conversation = store.getConversation(conversationId) ?: return@withContext false
+        val existing = store.contactByMatchKey(conversation.matchKey)
+        if (existing == null && !contactSync.insert(name, conversation.address)) return@withContext false
+        syncContacts()
+        val saved = store.contactByMatchKey(conversation.matchKey) ?: return@withContext false
+        linkContact(conversationId, saved)
+        true
+    }
+
     suspend fun linkContact(conversationId: Long, contact: ContactEntity) = withContext(Dispatchers.IO) {
         store.linkManually(
             conversationId = conversationId,
