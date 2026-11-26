@@ -107,20 +107,26 @@ fun SteamboatNavHost(graph: AppGraph) {
             )
         }
         composable(
-            route = "thread/{conversationId}?messageId={messageId}",
+            route = "thread/{conversationId}?messageId={messageId}&compose={compose}",
             arguments = listOf(
                 navArgument("conversationId") { type = NavType.LongType },
                 navArgument("messageId") {
                     type = NavType.LongType
                     defaultValue = -1L
                 },
+                navArgument("compose") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
             ),
         ) { entry ->
             val id = entry.arguments?.getLong("conversationId") ?: return@composable
             val messageId = entry.arguments?.getLong("messageId") ?: -1L
+            val compose = entry.arguments?.getBoolean("compose") ?: false
             ThreadRoute(
                 conversationId = id,
                 focusMessageId = messageId,
+                requestComposerFocus = compose,
                 viewModel = threadViewModel(id, graph.repository, graph.navigator),
                 quickReplies = graph.quickReplies,
                 location = graph.location,
@@ -146,7 +152,7 @@ fun SteamboatNavHost(graph: AppGraph) {
                     scope.launch {
                         val copies = graph.repository.copyAttachments(draft.media)
                         graph.navigator.stageDraft(opened, draft.copy(media = copies))
-                        nav.navigate("thread/$opened") {
+                        nav.navigate("thread/$opened?compose=true") {
                             popUpTo("contacts/forward") { inclusive = true }
                             launchSingleTop = true
                         }
@@ -162,7 +168,7 @@ fun SteamboatNavHost(graph: AppGraph) {
                 viewModel = contactsViewModel(graph.repository),
                 onBack = { nav.popBackStack() },
                 onOpenThread = { id ->
-                    nav.navigate("thread/$id") { popUpTo("inbox") }
+                    nav.navigate("thread/$id?compose=true") { popUpTo("inbox") }
                 },
                 onLinked = {},
             )
