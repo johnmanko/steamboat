@@ -4,6 +4,7 @@ import androidx.room3.withWriteTransaction
 import com.johnmanko.app.steamboat.data.db.ContactEntity
 import com.johnmanko.app.steamboat.data.db.ConversationEntity
 import com.johnmanko.app.steamboat.data.db.ConversationMemberEntity
+import com.johnmanko.app.steamboat.data.db.DeletedMessageEntity
 import com.johnmanko.app.steamboat.data.db.MessageEntity
 import com.johnmanko.app.steamboat.data.db.SteamboatDatabase
 import com.johnmanko.app.steamboat.domain.GroupPerson
@@ -29,6 +30,7 @@ class MessageStore(private val database: SteamboatDatabase) {
     private val conversations get() = database.conversations()
     private val members get() = database.members()
     private val messages get() = database.messages()
+    private val deletedMessages get() = database.deletedMessages()
 
     fun observeConversation(id: Long) = conversations.observe(id)
 
@@ -86,8 +88,18 @@ class MessageStore(private val database: SteamboatDatabase) {
         conversations.unlink(conversationId)
     }
 
-    suspend fun deleteConversation(id: Long) {
-        conversations.delete(id)
+    suspend fun providerKeys(conversationId: Long): List<String> = messages.providerKeys(conversationId)
+
+    /** Remembers system message ids, then removes the thread. Import will skip those ids. */
+    suspend fun suppressAndDelete(id: Long, providerKeys: List<String>) {
+        database.withWriteTransaction {
+            val rows = providerKeys
+                .filter { it.isNotBlank() }
+                .distinct()
+                .map { DeletedMessageEntity(providerKey = it) }
+            if (rows.isNotEmpty()) deletedMessages.insertAll(rows)
+            conversations.delete(id)
+        }
     }
 
     suspend fun markRead(conversationId: Long) {
@@ -228,6 +240,7 @@ class MessageStore(private val database: SteamboatDatabase) {
             val cache = HashMap<String, ConversationEntity>()
             for (row in rows) {
                 if (messages.findByProviderKey(row.providerKey) != null) continue
+                if (deletedMessages.find(row.providerKey) != null) continue
                 val conversation = ensureConversation(cache, row.address, row.sentAt, row.body)
                 if (row.outgoing) {
                     val duplicate = messages.findOutgoingDuplicate(
