@@ -158,7 +158,7 @@ fun ContactsRoute(
                 singleLine = true,
             )
             val typedNumber = viewModel.messageNumber
-            if (choosingRecipient && typedNumber != null) {
+            if (choosingRecipient && viewModel.selected.isEmpty() && typedNumber != null) {
                 Button(
                     onClick = { viewModel.messageTypedNumber(typedNumber, onOpenThread) },
                     modifier = Modifier
