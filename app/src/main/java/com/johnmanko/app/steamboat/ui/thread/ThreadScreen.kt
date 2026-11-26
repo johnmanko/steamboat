@@ -55,9 +55,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -99,6 +103,7 @@ import com.johnmanko.app.steamboat.ui.format.formatPhone
 fun ThreadRoute(
     conversationId: Long,
     focusMessageId: Long = -1L,
+    requestComposerFocus: Boolean = false,
     viewModel: ThreadViewModel,
     quickReplies: QuickReplies,
     location: LocationPreferences,
@@ -344,6 +349,7 @@ fun ThreadRoute(
             }
             Composer(
                 text = viewModel.composer,
+                requestFocus = requestComposerFocus,
                 attachments = viewModel.attachments,
                 phrases = phrases,
                 location = locationSettings,
@@ -532,6 +538,7 @@ private fun PeopleDialog(
 @Composable
 private fun Composer(
     text: String,
+    requestFocus: Boolean,
     attachments: List<PendingAttachment>,
     phrases: List<String>,
     location: LocationSettings,
@@ -543,6 +550,19 @@ private fun Composer(
 ) {
     var repliesOpen by remember { mutableStateOf(false) }
     var field by remember { mutableStateOf(TextFieldValue(text)) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(requestFocus) {
+        if (!requestFocus) return@LaunchedEffect
+        repeat(2) {
+            val attached = runCatching { focusRequester.requestFocus() }.isSuccess
+            if (attached) {
+                keyboard?.show()
+                return@LaunchedEffect
+            }
+            withFrameNanos { }
+        }
+    }
     if (field.text != text) field = TextFieldValue(text, TextRange(text.length))
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -648,7 +668,9 @@ private fun Composer(
                     field = updated
                     onText(updated.text)
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
                 placeholder = { Text(stringResource(R.string.message_hint)) },
                 shape = RoundedCornerShape(24.dp),
                 maxLines = 5,
