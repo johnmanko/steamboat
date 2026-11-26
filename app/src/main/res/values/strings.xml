@@ -48,6 +48,14 @@
     <string name="delete_conversation">Delete conversation</string>
     <string name="delete_conversation_title">Delete this conversation?</string>
     <string name="delete_conversation_body">Messages in Steamboat for this number will be removed from this device.</string>
+    <string name="delete_conversations_title">Delete these conversations?</string>
+    <string name="delete_conversations_body">Messages in Steamboat for the selected conversations will be removed from this device.</string>
+    <string name="exit_selection">Leave selection</string>
+    <string name="selected_mark">Selected</string>
+    <plurals name="selected_count">
+        <item quantity="one">1 selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
     <string name="message_hint">Text message</string>

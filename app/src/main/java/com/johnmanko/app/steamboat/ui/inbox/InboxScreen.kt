@@ -3,9 +3,12 @@ package com.johnmanko.app.steamboat.ui.inbox
 import android.Manifest
 import android.app.role.RoleManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,9 +26,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -55,8 +62,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -139,12 +148,27 @@ fun InboxRoute(
         tick += 1
         viewModel.refresh()
     }
+    var selectedIds by remember { mutableStateOf(setOf<Long>()) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val selecting = selectedIds.isNotEmpty()
+    BackHandler(enabled = selecting && !confirmDelete) {
+        selectedIds = emptySet()
+    }
+    fun toggleSelected(id: Long) {
+        selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
         contentColor = washContentColor(),
         topBar = {
-            if (searchOpen) {
+            if (selecting) {
+                SelectionBar(
+                    count = selectedIds.size,
+                    onExit = { selectedIds = emptySet() },
+                    onDelete = { confirmDelete = true },
+                )
+            } else if (searchOpen) {
                 SearchField(
                     query = query,
                     focusRequester = searchFocus,
@@ -194,8 +218,10 @@ fun InboxRoute(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNewMessage) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_message))
+            if (!selecting) {
+                FloatingActionButton(onClick = onNewMessage) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_message))
+                }
             }
         },
     ) { padding ->
@@ -223,7 +249,11 @@ fun InboxRoute(
                         conversations = conversations,
                         alerts = alerts,
                         query = query,
+                        selecting = selecting,
+                        selectedIds = selectedIds,
                         onOpenThread = onOpenThread,
+                        onToggle = ::toggleSelected,
+                        onStartSelection = { selectedIds = selectedIds + it },
                         modifier = Modifier.weight(1f),
                     )
                 } else {
@@ -236,6 +266,38 @@ fun InboxRoute(
                 }
             }
         }
+    }
+
+    if (confirmDelete) {
+        val many = selectedIds.size > 1
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = {
+                Text(
+                    stringResource(
+                        if (many) R.string.delete_conversations_title else R.string.delete_conversation_title,
+                    ),
+                )
+            },
+            text = {
+                Text(
+                    stringResource(
+                        if (many) R.string.delete_conversations_body else R.string.delete_conversation_body,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val ids = selectedIds
+                    confirmDelete = false
+                    selectedIds = emptySet()
+                    viewModel.deleteConversations(ids)
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
     }
 }
 
@@ -324,12 +386,45 @@ private fun SetupBanner(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectionBar(
+    count: Int,
+    onExit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    TopAppBar(
+        title = { Text(pluralStringResource(R.plurals.selected_count, count, count)) },
+        navigationIcon = {
+            IconButton(onClick = onExit) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.exit_selection),
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                )
+            }
+        },
+        colors = washTopBarColors(),
+    )
+}
+
 @Composable
 private fun ConversationList(
     conversations: LazyPagingItems<ConversationEntity>,
     alerts: Map<Long, AlertPolicy>,
     query: String,
+    selecting: Boolean,
+    selectedIds: Set<Long>,
     onOpenThread: (Long) -> Unit,
+    onToggle: (Long) -> Unit,
+    onStartSelection: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val refresh = conversations.loadState.refresh
@@ -370,10 +465,15 @@ private fun ConversationList(
                     contentType = conversations.itemContentType { "conversation" },
                 ) { index ->
                     val conversation = conversations[index] ?: return@items
+                    val picked = conversation.id in selectedIds
                     ConversationRow(
                         conversation,
                         alert = alerts[conversation.id],
-                        onClick = { onOpenThread(conversation.id) },
+                        selected = picked,
+                        onClick = {
+                            if (selecting) onToggle(conversation.id) else onOpenThread(conversation.id)
+                        },
+                        onLongClick = { onStartSelection(conversation.id) },
                     )
                 }
             }
@@ -487,7 +587,9 @@ private fun MessageHitRow(hit: MessageSearchHit, query: String, onClick: () -> U
 private fun ConversationRow(
     conversation: ConversationEntity,
     alert: AlertPolicy?,
+    selected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     val yesterday = stringResource(R.string.yesterday)
     val unreadLabel = stringResource(R.string.unread_count, conversation.unreadCount)
@@ -495,13 +597,26 @@ private fun ConversationRow(
     val field = LocalThemeWash.current.middle
     val nameColor = ink.strongerOn(field)
     val quiet = ink.quieterOn(field)
+    val highlight = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .background(if (selected) highlight else Color.Transparent)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .semantics { this.selected = selected }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (selected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = stringResource(R.string.selected_mark),
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(24.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
         PastelAvatar(
             title = conversation.title,
             key = conversation.matchKey.ifBlank { conversation.address },

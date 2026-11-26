@@ -44,6 +44,12 @@ class InboxViewModel(private val repository: MessagingRepository) : ViewModel() 
             }
         }
     }
+
+    fun deleteConversations(ids: Collection<Long>) {
+        viewModelScope.launch {
+            ids.forEach { repository.deleteConversation(it) }
+        }
+    }
 }
 
 @Composable
