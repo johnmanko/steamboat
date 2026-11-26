@@ -13,6 +13,7 @@ import com.johnmanko.app.steamboat.data.repo.MessageStore
 import com.johnmanko.app.steamboat.data.repo.MessagingRepository
 import com.johnmanko.app.steamboat.data.sample.SampleInbox
 import com.johnmanko.app.steamboat.data.sms.AttachmentStore
+import com.johnmanko.app.steamboat.data.sms.MmsImporter
 import com.johnmanko.app.steamboat.data.sms.MmsSender
 import com.johnmanko.app.steamboat.data.sms.RcsAvailability
 import com.johnmanko.app.steamboat.data.sms.SmsImporter
@@ -37,6 +38,7 @@ class AppGraph(context: Context) {
             store = store,
             contactSync = ContactSync(appContext),
             smsImporter = SmsImporter(appContext),
+            mmsImporter = MmsImporter(appContext),
             smsSender = SmsSender(appContext),
             mmsSender = MmsSender(appContext),
             attachments = AttachmentStore(appContext),

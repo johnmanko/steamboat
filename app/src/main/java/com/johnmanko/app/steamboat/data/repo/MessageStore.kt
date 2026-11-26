@@ -18,6 +18,8 @@ data class ImportedSms(
     val outgoing: Boolean,
     val seen: Boolean,
     val status: String,
+    val mediaPath: String? = null,
+    val mediaMime: String? = null,
 )
 
 /**
@@ -248,9 +250,20 @@ class MessageStore(private val database: SteamboatDatabase) {
                         status = row.status,
                         seen = row.seen,
                         providerKey = row.providerKey,
+                        mediaPath = row.mediaPath,
+                        mediaMime = row.mediaMime,
                     ),
                 )
-                conversations.updateSnippetIfNewer(conversation.id, row.body, row.sentAt)
+                val snippet = if (row.body.isNotBlank()) {
+                    row.body
+                } else if (row.mediaMime?.startsWith("video/") == true) {
+                    "Video"
+                } else if (row.mediaPath != null) {
+                    "Photo"
+                } else {
+                    ""
+                }
+                conversations.updateSnippetIfNewer(conversation.id, snippet, row.sentAt)
             }
         }
     }

@@ -17,6 +17,7 @@ import com.johnmanko.app.steamboat.data.db.ConversationEntity
 import com.johnmanko.app.steamboat.data.db.MessageEntity
 import com.johnmanko.app.steamboat.data.sms.AttachmentStore
 import com.johnmanko.app.steamboat.data.sms.MessageTransport
+import com.johnmanko.app.steamboat.data.sms.MmsImporter
 import com.johnmanko.app.steamboat.data.sms.MmsSender
 import com.johnmanko.app.steamboat.data.sms.RcsAvailability
 import com.johnmanko.app.steamboat.data.sms.SmsImporter
@@ -43,6 +44,7 @@ class MessagingRepository(
     private val store: MessageStore,
     private val contactSync: ContactSync,
     private val smsImporter: SmsImporter,
+    private val mmsImporter: MmsImporter,
     private val smsSender: SmsSender,
     private val mmsSender: MmsSender,
     private val attachments: AttachmentStore,
@@ -110,6 +112,7 @@ class MessagingRepository(
         importMutex.withLock {
             if (!smsImporter.canRead()) return@withLock
             smsImporter.readAll { page -> store.importMessages(page) }
+            mmsImporter.readAll { page -> store.importMessages(page) }
             store.refreshAllUnread()
             store.relinkContacts()
         }
