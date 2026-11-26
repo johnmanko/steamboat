@@ -143,30 +143,6 @@ class MessagingRepository(
         store.removePerson(conversationId, matchKey)
     }
 
-    suspend fun addUnlistedNumber(raw: String): Long = withContext(Dispatchers.IO) {
-        val display = PhoneNumbers.display(raw)
-        contactSync.insert(display)
-        syncContacts()
-        val saved = store.contactByMatchKey(PhoneNumbers.matchKey(raw))
-        if (saved != null) {
-            store.openConversation(
-                address = saved.phoneNumber,
-                title = saved.displayName,
-                photoUri = saved.photoUri,
-                lookupKey = saved.lookupKey,
-                manual = true,
-            )
-        } else {
-            store.openConversation(
-                address = display,
-                title = display,
-                photoUri = null,
-                lookupKey = null,
-                manual = false,
-            )
-        }
-    }
-
     suspend fun openConversation(address: String): Long = withContext(Dispatchers.IO) {
         store.openConversation(
             address = address,

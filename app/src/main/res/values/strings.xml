@@ -99,7 +99,8 @@
     <string name="conversation_people">People</string>
     <string name="link_title">Link a contact</string>
     <string name="no_contacts">No contacts with phone numbers</string>
-    <string name="add_number">Add %1$s</string>
+    <string name="add_number">Add %1$s to Contacts</string>
+    <string name="message_number">Message %1$s</string>
     <string name="contacts_permission_body">Allow contacts to start a thread with someone you know, and to match existing numbers to names.</string>
     <string name="allow_contacts">Allow contacts</string>
     <string name="you">You</string>

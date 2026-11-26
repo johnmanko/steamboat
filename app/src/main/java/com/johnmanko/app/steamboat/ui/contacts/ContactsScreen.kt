@@ -1,7 +1,11 @@
 package com.johnmanko.app.steamboat.ui.contacts
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.ContactsContract
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -31,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,26 +76,22 @@ fun ContactsRoute(
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
             PackageManager.PERMISSION_GRANTED
     }
-    var pendingNumber by remember { mutableStateOf<String?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         tick += 1
         viewModel.refresh()
     }
-    val writeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        val number = pendingNumber
-        pendingNumber = null
-        if (number != null) viewModel.addNumber(number, onOpenThread)
+    val addInContacts = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        viewModel.refresh()
     }
     fun addTypedNumber(number: String) {
-        val writeGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.WRITE_CONTACTS,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (writeGranted) {
-            viewModel.addNumber(number, onOpenThread)
-        } else {
-            pendingNumber = number
-            writeLauncher.launch(Manifest.permission.WRITE_CONTACTS)
+        val intent = Intent(ContactsContract.Intents.Insert.ACTION).apply {
+            type = ContactsContract.RawContacts.CONTENT_TYPE
+            putExtra(ContactsContract.Intents.Insert.PHONE, formatPhone(number))
+        }
+        try {
+            addInContacts.launch(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(context, R.string.contact_not_saved, Toast.LENGTH_LONG).show()
         }
     }
     LaunchedEffect(granted) {
@@ -148,6 +147,15 @@ fun ContactsRoute(
                 placeholder = { Text(stringResource(R.string.search)) },
                 singleLine = true,
             )
+            val typedNumber = viewModel.messageNumber
+            if (mode == ContactsMode.NewMessage && typedNumber != null) {
+                Button(
+                    onClick = { viewModel.messageTypedNumber(typedNumber, onOpenThread) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                ) { Text(stringResource(R.string.message_number, formatPhone(typedNumber))) }
+            }
             when {
                 contacts.loadState.refresh is LoadState.Loading && contacts.itemCount == 0 -> {
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {

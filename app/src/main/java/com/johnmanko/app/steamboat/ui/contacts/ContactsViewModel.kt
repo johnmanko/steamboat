@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.cachedIn
 import com.johnmanko.app.steamboat.data.db.ContactEntity
 import com.johnmanko.app.steamboat.data.repo.MessagingRepository
+import com.johnmanko.app.steamboat.domain.PhoneNumbers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
@@ -21,9 +22,18 @@ class ContactsViewModel(private val repository: MessagingRepository) : ViewModel
     val contacts = repository.contacts(query).cachedIn(viewModelScope)
     var selected by mutableStateOf(emptyList<ContactEntity>())
         private set
+    var messageNumber by mutableStateOf<String?>(null)
+        private set
 
     fun onQuery(value: String) {
         query.value = value
+        publishMessageNumber(value)
+    }
+
+    fun messageTypedNumber(number: String, onReady: (Long) -> Unit) {
+        viewModelScope.launch {
+            onReady(repository.openConversation(PhoneNumbers.display(number)))
+        }
     }
 
     fun toggle(contact: ContactEntity) {
@@ -54,12 +64,18 @@ class ContactsViewModel(private val repository: MessagingRepository) : ViewModel
     }
 
     fun refresh() {
-        viewModelScope.launch { repository.syncContacts() }
+        viewModelScope.launch {
+            repository.syncContacts()
+            publishMessageNumber(query.value)
+        }
     }
 
-    fun addNumber(raw: String, onReady: (Long) -> Unit) {
+    private fun publishMessageNumber(value: String) {
+        val number = PhoneNumbers.newContactNumber(value)
         viewModelScope.launch {
-            onReady(repository.addUnlistedNumber(raw))
+            val saved = number != null && repository.hasContact(PhoneNumbers.matchKey(number))
+            if (query.value != value) return@launch
+            messageNumber = if (number != null && !saved) number else null
         }
     }
 
