@@ -27,7 +27,7 @@ class ContactsViewModel(private val repository: MessagingRepository) : ViewModel
 
     fun onQuery(value: String) {
         query.value = value
-        publishMessageNumber(value)
+        messageNumber = PhoneNumbers.newContactNumber(value)
     }
 
     fun messageTypedNumber(number: String, onReady: (Long) -> Unit) {
@@ -66,16 +66,7 @@ class ContactsViewModel(private val repository: MessagingRepository) : ViewModel
     fun refresh() {
         viewModelScope.launch {
             repository.syncContacts()
-            publishMessageNumber(query.value)
-        }
-    }
-
-    private fun publishMessageNumber(value: String) {
-        val number = PhoneNumbers.newContactNumber(value)
-        viewModelScope.launch {
-            val saved = number != null && repository.hasContact(PhoneNumbers.matchKey(number))
-            if (query.value != value) return@launch
-            messageNumber = if (number != null && !saved) number else null
+            messageNumber = PhoneNumbers.newContactNumber(query.value)
         }
     }
 
