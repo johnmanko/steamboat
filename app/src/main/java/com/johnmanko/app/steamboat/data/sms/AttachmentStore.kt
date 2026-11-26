@@ -26,6 +26,19 @@ class AttachmentStore(private val context: Context) {
         return file.absolutePath
     }
 
+    fun copy(parts: List<PendingAttachment>): List<PendingAttachment> {
+        if (parts.isEmpty()) return emptyList()
+        val dir = File(context.filesDir, "media").apply { mkdirs() }
+        return parts.mapNotNull { part ->
+            val source = File(part.path)
+            if (!source.isFile) return@mapNotNull null
+            val ext = source.extension.ifBlank { extension(part.mime) }
+            val dest = File(dir, "${UUID.randomUUID()}.$ext")
+            source.copyTo(dest, overwrite = false)
+            part.copy(path = dest.absolutePath)
+        }
+    }
+
     fun discard(attachment: PendingAttachment) {
         File(attachment.path).delete()
     }

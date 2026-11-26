@@ -86,6 +86,7 @@
     <string name="yesterday">Yesterday</string>
     <string name="back">Back</string>
     <string name="more">More</string>
+    <string name="forward">Forward</string>
     <string name="permissions_title">Finish setting up texts</string>
     <string name="permissions_body">Steamboat needs messages, contacts, and notifications so threads stay linked to people and you can reply from the shade.</string>
     <string name="grant_permissions">Allow access</string>

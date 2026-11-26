@@ -8,6 +8,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,10 +30,12 @@ import com.johnmanko.app.steamboat.ui.settings.SettingsRoute
 import com.johnmanko.app.steamboat.ui.themes.ThemesRoute
 import com.johnmanko.app.steamboat.ui.thread.ThreadRoute
 import com.johnmanko.app.steamboat.ui.thread.threadViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SteamboatNavHost(graph: AppGraph) {
     val nav = rememberNavController()
+    val scope = rememberCoroutineScope()
     val requested by graph.navigator.conversationId.collectAsStateWithLifecycle()
     LaunchedEffect(requested) {
         val id = requested ?: return@LaunchedEffect
@@ -125,6 +129,30 @@ fun SteamboatNavHost(graph: AppGraph) {
                 onBack = { nav.popBackStack() },
                 onLinkContact = { conversationId -> nav.navigate("contacts/link/$conversationId") },
                 onAddPerson = { nav.navigate("contacts/add/$id") },
+                onForward = { text, media ->
+                    graph.navigator.stageForward(text, media)
+                    nav.navigate("contacts/forward")
+                },
+            )
+        }
+        composable("contacts/forward") {
+            val draft = remember { graph.navigator.takeForward() }
+            ContactsRoute(
+                mode = ContactsMode.Forward,
+                conversationId = null,
+                viewModel = contactsViewModel(graph.repository),
+                onBack = { nav.popBackStack() },
+                onOpenThread = { opened ->
+                    scope.launch {
+                        val copies = graph.repository.copyAttachments(draft.media)
+                        graph.navigator.stageDraft(opened, draft.copy(media = copies))
+                        nav.navigate("thread/$opened") {
+                            popUpTo("contacts/forward") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                },
+                onLinked = {},
             )
         }
         composable("contacts/new") {

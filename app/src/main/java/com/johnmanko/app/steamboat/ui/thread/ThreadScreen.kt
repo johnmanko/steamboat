@@ -42,6 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -63,6 +64,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
@@ -105,6 +107,7 @@ fun ThreadRoute(
     onBack: () -> Unit,
     onLinkContact: (Long) -> Unit,
     onAddPerson: () -> Unit,
+    onForward: (String, List<PendingAttachment>) -> Unit,
 ) {
     val conversation by viewModel.conversation.collectAsStateWithLifecycle()
     val members by viewModel.members.collectAsStateWithLifecycle()
@@ -115,6 +118,7 @@ fun ThreadRoute(
     val messages = viewModel.messages.collectAsLazyPagingItems()
     val listState = rememberLazyListState()
     var menuOpen by remember { mutableStateOf(false) }
+    var forwardMessage by remember { mutableStateOf<MessageEntity?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var addContactOpen by remember { mutableStateOf(false) }
     var contactName by remember { mutableStateOf("") }
@@ -308,6 +312,7 @@ fun ThreadRoute(
                             MessageBubble(
                                 message = message,
                                 onRetry = viewModel::retry,
+                                onLongPress = { forwardMessage = message },
                                 senderName = senderName(message, members),
                                 highlighted = message.id == focusMessageId,
                             )
@@ -407,6 +412,24 @@ fun ThreadRoute(
                 TextButton(onClick = { addContactOpen = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
+    }
+
+    val pendingForward = forwardMessage
+    if (pendingForward != null) {
+        Dialog(onDismissRequest = { forwardMessage = null }) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                TextButton(
+                    onClick = {
+                        forwardMessage = null
+                        onForward(pendingForward.body, pendingForward.mediaParts())
+                    },
+                    modifier = Modifier.padding(8.dp),
+                ) { Text(stringResource(R.string.forward)) }
+            }
+        }
     }
 
     if (confirmDelete) {
