@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -97,6 +98,7 @@ fun ContactsRoute(
     LaunchedEffect(granted) {
         if (granted) viewModel.refresh()
     }
+    val choosingRecipient = mode == ContactsMode.NewMessage || mode == ContactsMode.Forward
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -119,6 +121,13 @@ fun ContactsRoute(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
+                actions = {
+                    if (choosingRecipient && viewModel.selected.isNotEmpty()) {
+                        TextButton(onClick = { viewModel.startSelected(onOpenThread) }) {
+                            Text(stringResource(R.string.message_selected))
+                        }
                     }
                 },
             )
@@ -148,7 +157,6 @@ fun ContactsRoute(
                 placeholder = { Text(stringResource(R.string.search)) },
                 singleLine = true,
             )
-            val choosingRecipient = mode == ContactsMode.NewMessage || mode == ContactsMode.Forward
             val typedNumber = viewModel.messageNumber
             if (choosingRecipient && typedNumber != null) {
                 Button(
@@ -204,14 +212,6 @@ fun ContactsRoute(
                         }
                     }
                 }
-            }
-            if (choosingRecipient && viewModel.selected.isNotEmpty()) {
-                Button(
-                    onClick = { viewModel.startSelected(onOpenThread) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) { Text(stringResource(R.string.message_selected)) }
             }
         }
     }
