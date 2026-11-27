@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestMultiple
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -151,10 +153,9 @@ fun ThreadRoute(
         }
     }
     LaunchedEffect(messages.itemCount, listHeight) {
-        if (focusMessageId > 0L) return@LaunchedEffect
-        if (messages.itemCount > 0 && listState.firstVisibleItemIndex <= 1) {
-            listState.scrollToItem(0)
-        }
+        if (focusMessageId > 0L || messages.itemCount == 0) return@LaunchedEffect
+        if (listState.firstVisibleItemIndex > 2) return@LaunchedEffect
+        listState.revealLatest()
     }
     var placedFocus by remember(focusMessageId) { mutableStateOf(false) }
     LaunchedEffect(focusMessageId, messages.itemCount, messages.loadState.append) {
@@ -310,8 +311,7 @@ fun ThreadRoute(
                         modifier = Modifier
                             .weight(1f)
                             .onSizeChanged { listHeight = it.height },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 4.dp),
                     ) {
                         items(
                             count = messages.itemCount,
@@ -325,6 +325,7 @@ fun ThreadRoute(
                                 onLongPress = { forwardMessage = message },
                                 senderName = senderName(message, members),
                                 highlighted = message.id == focusMessageId,
+                                modifier = Modifier.padding(top = 8.dp),
                             )
                         }
                         if (messages.loadState.append is LoadState.Loading) {
@@ -688,6 +689,29 @@ private fun Composer(
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.send))
             }
         }
+    }
+}
+
+/**
+ * The reversed list's newest row is item 0. [scrollToItem] lines that row's top
+ * up with the bottom of the viewport, which leaves the bubble under the composer.
+ * Nudge it back up until the whole row sits inside the list.
+ */
+private suspend fun LazyListState.revealLatest() {
+    scrollToItem(0)
+    withFrameNanos { }
+    repeat(2) {
+        val info = layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == 0 } ?: return
+        val pastEnd = item.offset + item.size - info.viewportEndOffset
+        val beforeStart = info.viewportStartOffset - item.offset
+        val delta = when {
+            pastEnd > 1 -> pastEnd.toFloat()
+            beforeStart > 1 -> -beforeStart.toFloat()
+            else -> return
+        }
+        scroll { scrollBy(delta) }
+        withFrameNanos { }
     }
 }
 
